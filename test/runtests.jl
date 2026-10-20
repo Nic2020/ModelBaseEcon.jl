@@ -1015,6 +1015,16 @@ end
     end
 end
 
+@testset "deepcopy(model)" begin
+    m = E1.newmodel()
+    m2 = deepcopy(m)
+    @test m2 !== m
+    @test ModelBaseEcon.moduleof(m2) === ModelBaseEcon.moduleof(m) === E1
+    # the copy is independent of the original
+    m2.parameters.α = 0.9
+    @test m.parameters.α != 0.9
+end
+
 module AUX
 using ModelBaseEcon
 model = Model()

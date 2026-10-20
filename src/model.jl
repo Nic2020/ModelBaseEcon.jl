@@ -55,7 +55,7 @@ mutable struct Model <: AbstractModel
     Should not be directly manipulated."
     _state::Symbol
     "the module in which all model equations will be compiled"
-    _module_eval::Union{Nothing,Function}
+    _modelmodule::Union{Nothing,ModelModule}
     "Options are various hyper-parameters for tuning the algorithms"
     options::Options
     "Flags contain meta information about the type of model"
@@ -1400,7 +1400,7 @@ function initialize!(model::Model, modelmodule::Module)
         modelerror("Model already initialized.")
     end
     initfuncs(modelmodule)
-    model._module_eval = modelmodule.eval
+    model._modelmodule = ModelModule(modelmodule)
     samename = Symbol[intersect(model.allvars, keys(model.parameters))...]
     if !isempty(samename)
         modelerror("Found $(length(samename)) names that are both variables and parameters: $(join(samename, ", "))")
