@@ -259,9 +259,9 @@ end
     @test resid([1.1, 2.3]) == 8.0
     @test RJ([1.1, 2.3]) == (8.0, [1.0, 3.0])
     # make sure the EquationEvaluator and EquationGradient are reused for identical expressions and arguments
-    nnames = length(names(E, all=true))
+    nnames = length(Base.invokelatest(names, E; all=true))
     resid1, RJ1 = ModelBaseEcon.makefuncs(Symbol(1), :(x + 3 * y), [:x, :y], [], [], E)
-    @test nnames == length(names(E, all=true))
+    @test nnames == length(Base.invokelatest(names, E; all=true))
     @test resid === resid1
     @test RJ === RJ1
 end
@@ -681,6 +681,59 @@ end
     end
 end
 
+# Build a model and use it in the same call, i.e. without returning to top level
+# in between. The model's functions are created by `eval`, so before Julia 1.12
+# using them failed with "method too new", and since 1.12 building fails too.
+function world_age_build(; substitutions=false)
+    m = Model()
+    m.substitutions = substitutions
+    @variables m a b
+    @shocks m sa
+    @parameters m p = 0.5 q = @link(2p)
+    @equations m begin
+        a[t] = p * a[t-1] + sa[t]
+        @lin log(b[t]) = q * a[t] + 0.1 * a[t+1]
+    end
+    @initialize m
+    return m
+end
+function world_age_use()
+    m1 = world_age_build()
+    m2 = world_age_build()  # same module: must reuse, not redefine, the evaluator types
+    pt = [ones(3) fill(2.0, 3) ones(3)]  # columns a, b, sa
+    R1, J1 = eval_RJ(pt, m1)
+    R2, J2 = eval_RJ(pt, m2)
+    res = zeros(2)
+    eval_R!(res, pt, m1)
+    # only builds the constraint's functions; solving is StateSpaceEcon's job
+    @steadystate m1 a = 0
+    # steady state a = 0, b = 1, sa = 0 (level, slope pairs)
+    m1.sstate.values .= [0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
+    m1.sstate.mask .= true
+    selective_linearize!(m1)
+    RS, _ = eval_RJ(pt, m1, :selective_linearize)
+    linearize!(m1)
+    RL, _ = eval_RJ(pt, m1, :linearize)
+    ma = world_age_build(substitutions=true)
+    aux = ModelBaseEcon.update_auxvars(pt, ma)
+    return (; R1, J1, R2, J2, res, RS, RL, aux,
+        sametype=typeof(m1.equations[:_EQ1].eval_resid) === typeof(m2.equations[:_EQ1].eval_resid),
+        eqres=eval_equation(m2, m2.equations[:_EQ1], ones(5, 3)))
+end
+
+@testset "build and use in one call" begin
+    r = world_age_use()
+    @test r.R1 ≈ [-0.5, log(2) - 1.1]
+    @test r.R2 == r.R1 && r.J2 == r.J1
+    @test r.res == r.R1
+    @test r.sametype
+    # about the steady state, log(b) ≈ b - 1, so the second residual is (2 - 1) - 1.1
+    @test r.RS ≈ [-0.5, -0.1]  # only the @lin equation is linearized
+    @test r.RL ≈ [-0.5, -0.1]  # the first equation is linear anyway
+    @test r.aux ≈ [ones(3) fill(2.0, 3) ones(3) fill(log(2), 3)]  # aux = log(b)
+    @test isequal(r.eqres, [NaN, -0.5, -0.5, -0.5, NaN])
+end
+
 @testset "Meta" begin
     mod = Model()
     @parameters mod a = 0.1 b = @link(1.0 - a)
@@ -997,12 +1050,13 @@ end
     for i = 1:5
         α = 0.132434
         new_E1 = E1_noparams.newmodel()
-        prev_length = length(names(modelmodule, all=true))
+        # invokelatest: since Julia 1.12, names() only lists globals visible in the caller's world
+        prev_length = length(Base.invokelatest(names, modelmodule; all=true))
         @equations new_E1 begin
             :maineq => y[t] = $α * y[t-1] + $(1 - α) * y[t+1] + y_shk[t]
         end
         @reinitialize(new_E1)
-        new_length = length(names(modelmodule, all=true))
+        new_length = length(Base.invokelatest(names, modelmodule; all=true))
         if i == 1
             @test new_length == prev_length + 3
         else
@@ -1011,7 +1065,7 @@ end
         @test ModelBaseEcon.moduleof(new_E1.equations[:maineq]) === E1_noparams
         # also make sure moduleof doesn't add any new symbols to modules
         @test ModelBaseEcon.moduleof(new_E1) === E1_noparams
-        @test new_length == length(names(modelmodule, all=true))
+        @test new_length == length(Base.invokelatest(names, modelmodule; all=true))
     end
 end
 
@@ -1741,7 +1795,8 @@ end
         x = Float64[0, 0.375, 0.128, 0]
         x[1] = model.parameters.c[1] * x[2] + model.parameters.c[2] * x[3]
         eq = model.equations[:E1]
-        @test 0 == eq.eval_resid(x)
+        # invokelatest: the model was built in this same call (see "build and use in one call")
+        @test 0 == Base.invokelatest(eq.eval_resid, x)
     end
 end
 
