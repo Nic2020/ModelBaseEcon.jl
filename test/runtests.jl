@@ -11,6 +11,9 @@ using Test
 
 import ModelBaseEcon.update
 
+# accessing a field that does not exist throws FieldError since Julia 1.12
+const NoFieldError = VERSION >= v"1.12" ? FieldError : ErrorException
+
 
 @testset "Transformations" begin
     @test_throws ErrorException transformation(Transformation)
@@ -46,7 +49,7 @@ import ModelBaseEcon.update
         @test_logs (:warn, r".*do not specify transformation directly.*"i) @test update(m.ly, transformation=LogTransform).tr_type == :log
         @test_logs (:warn, r".*do not specify transformation directly.*"i) @test update(m.lmy, tr_type=:neglog, transformation=NegLogTransform).tr_type == :neglog
 
-        @test_throws ErrorException m.dummy = nothing
+        @test_throws NoFieldError m.dummy = nothing
 
     end
 end
@@ -442,7 +445,7 @@ end
 
         @test m.exogenous == ModelVariable[]
         @test m.nexog == 0
-        @test_throws ErrorException m.dummy
+        @test_throws NoFieldError m.dummy
 
         @test show(IOBuffer(), MIME"text/plain"(), m.flags) === nothing
     end
@@ -480,10 +483,10 @@ end
 @testset "Abstract" begin
     struct AM <: ModelBaseEcon.AbstractModel end
     m = AM()
-    @test_throws ErrorException ModelBaseEcon.alleqns(m)
-    @test_throws ErrorException ModelBaseEcon.allvars(m)
-    @test_throws ErrorException ModelBaseEcon.nalleqns(m) == 0
-    @test_throws ErrorException ModelBaseEcon.nallvars(m) == 0
+    @test_throws NoFieldError ModelBaseEcon.alleqns(m)
+    @test_throws NoFieldError ModelBaseEcon.allvars(m)
+    @test_throws NoFieldError ModelBaseEcon.nalleqns(m) == 0
+    @test_throws NoFieldError ModelBaseEcon.nallvars(m) == 0
     @test_throws ErrorException ModelBaseEcon.moduleof(m) == @__MODULE__
 end
 
