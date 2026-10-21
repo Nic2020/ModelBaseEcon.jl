@@ -229,7 +229,7 @@ would be handled automatically and there is no need for the user to specify
 CommonComponents
 
 const CommonComponents{MF<:MixedFrequency} = ComponentsBlock{:Dense,MF}
-CommonComponents(name, size::Integer=name isa LikeVec ? length(name) : 1; order::Integer=1, nlags::Integer=order) = CommonComponents{NoMixFreq}(name, size, order, nlags)
+CommonComponents(name::Union{Sym,SymVec}, size::Integer=name isa LikeVec ? length(name) : 1; order::Integer=1, nlags::Integer=order) = CommonComponents{NoMixFreq}(name, size, order, nlags)
 CommonComponents(MF::Type{<:MixedFrequency}, name, size::Integer=name isa LikeVec ? length(name) : 1; order::Integer=1, nlags::Integer=order) = CommonComponents{MF}(name, size, order, nlags)
 
 """

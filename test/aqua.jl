@@ -10,8 +10,6 @@ using Aqua
 
 @testset "Aqua" begin
     Aqua.test_all(ModelBaseEcon;
-        # TODO: CommonComponents(MF, size::Integer) matches two constructors
-        ambiguities=(broken=true,),
         # get(d, i) returns the i-th value of an ordered dictionary (misc.jl);
         # user code relies on it, so it stays until the maintainers decide otherwise
         piracies=(treat_as_own=[ModelBaseEcon.OrderedDict, ModelBaseEcon.LittleDict],),
