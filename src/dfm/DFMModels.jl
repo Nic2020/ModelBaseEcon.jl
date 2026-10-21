@@ -23,10 +23,10 @@ import ..isshock
 
 import ..AbstractModel
 
-using LinearAlgebra
-using OrderedCollections
-using ComponentArrays
-using SparseArrays
+using LinearAlgebra: LinearAlgebra, Diagonal, I, Symmetric, diag, dot, lmul!
+using OrderedCollections: OrderedCollections, LittleDict
+using ComponentArrays: ComponentArrays, Axis, ComponentArray, FlatAxis
+using SparseArrays: SparseArrays, spzeros
 # using FillArrays
 
 ####################################################

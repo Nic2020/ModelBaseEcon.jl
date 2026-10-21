@@ -10,8 +10,8 @@ using ExplicitImports
 
 @testset "ExplicitImports" begin
     test_explicit_imports(ModelBaseEcon;
-        # TODO: names used through `using X` without being listed
-        no_implicit_imports=false,
+        # crayon"..." appears only in code that prettyprint_equation builds as a string and evaluates
+        no_stale_explicit_imports=(ignore=(Symbol("@crayon_str"),),),
         # use of non-public names is checked later
         all_explicit_imports_are_public=false,
         all_qualified_accesses_are_public=false,
