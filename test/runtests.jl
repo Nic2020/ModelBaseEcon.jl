@@ -1670,9 +1670,13 @@ m2_for_sattelite_tests = nothing
 
     original_stdout = stdout
     (read_pipe, write_pipe) = redirect_stdout()
-    findequations(m, :cr)
-    redirect_stdout(original_stdout)
-    close(write_pipe)
+    try
+        findequations(m, :cr)
+    finally
+        # restore stdout even if findequations throws, so its error is not lost in the pipe
+        redirect_stdout(original_stdout)
+        close(write_pipe)
+    end
     @test readline(read_pipe) == ":_EQ2 => \e[38;2;29;120;116mrate\e[39m[t] = \e[38;2;244;192;149;1mcr\e[39;22m[1] * \e[38;2;29;120;116mrate\e[39m[t - 1] + ((1 - \e[38;2;244;192;149;1mcr\e[39;22m[1]) * (\e[38;2;244;192;149;1mcr\e[39;22m[2] * \e[38;2;29;120;116mpinf\e[39m[t] + \e[38;2;244;192;149;1mcr\e[39;22m[3] * \e[38;2;29;120;116mygap\e[39m[t]) + \e[38;2;238;46;49mrate_shk\e[39m[t])"
 
 end
